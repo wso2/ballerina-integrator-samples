@@ -6,13 +6,6 @@ import ballerina/log;
 listener http:Listener httpDefaultListener = http:getDefaultListener();
 
 service / on httpDefaultListener {
-    function init() returns error? {
-        do {
-
-        } on fail error err {
-
-        }
-    }
 
     resource function post convert(@http:Payload json payload) returns xml|http:BadRequest {
         do {

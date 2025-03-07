@@ -11,7 +11,7 @@ public function main() returns error? {
         string[] words = regexp:split(re `\s+`, fileContent);
         int wordCount = words.length();
 
-        io:println("File Processed Successfully. Word count: ", wordCount);
+        io:println("File processed successfully. Word count: ", wordCount);
     } on fail error e {
         log:printError("File processing failed: " + e.message());
         return e;

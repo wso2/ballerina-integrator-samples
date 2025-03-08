@@ -8,9 +8,15 @@ on:
         required: false
         default: 'latest'
         type: string
+      packages:
+        description: 'Packages to release (comma-separated, or "all" for all packages)'
+        required: true
+        default: 'all'
+        type: string
       bal_central_environment:
         description: 'Environment to release to'
         required: true
+        default: 'DEV'
         type: choice
         options:
           - DEV
@@ -18,7 +24,7 @@ on:
           - PROD
 
 jobs:
-  get-packages:
+  discover-packages:
     runs-on: ubuntu-latest
     outputs:
       package_list: ${{ steps.find-packages.outputs.packages }}
@@ -34,45 +40,22 @@ jobs:
           echo "packages=$package_list" >> $GITHUB_OUTPUT
           echo "Found packages: $package_list"
 
-  select-package:
-    needs: get-packages
-    runs-on: ubuntu-latest
-    outputs:
-      selected_package: ${{ steps.select.outputs.selected }}
-    steps:
-      - name: Select package to publish
-        id: select
-        run: |
-          packages='${{ needs.get-packages.outputs.package_list }}'
-          echo "Available packages:"
-          echo "$packages" | jq -r '.[]'
-          echo ""
-          echo "::group::Package Selection"
-          echo "Please select a package to publish by entering a number:"
-          select_options=""
-          count=1
-          for pkg in $(echo "$packages" | jq -r '.[]'); do
-            select_options+="$count) $pkg\n"
-            count=$((count+1))
-          done
-          echo -e "$select_options"
-          echo "::endgroup::"
-          
-          # For GitHub Actions, we'll use the first package as default
-          # In a real interactive environment, you would prompt the user here
-          selected=$(echo "$packages" | jq -r '.[0]')
-          echo "selected=$selected" >> $GITHUB_OUTPUT
-          echo "Selected package: $selected"
-
   release:
-    needs: select-package
+    needs: discover-packages
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: ${{ fromJSON(needs.discover-packages.outputs.package_list) }}
+        include: []
+    if: |
+      github.event.inputs.packages == 'all' || 
+      contains(split(github.event.inputs.packages, ','), matrix.package)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Set up Ballerina
-        uses: ballerina-platform/setup-ballerina@v1.1.3
+        uses: ballerina-platform/setup-ballerina@v1
         with:
           version: ${{ github.event.inputs.ballerina_version || 'latest' }}
 
@@ -84,14 +67,13 @@ jobs:
 
       - name: Build Ballerina package
         run: |
-          cd ${{ needs.select-package.outputs.selected_package }}
-          bal build
-          bal test
+          cd ${{ matrix.package }}
+          bal pack
 
       - name: Push to Dev
         if: github.event.inputs.bal_central_environment == 'DEV'
         run: bal push
-        working-directory: ./${{ needs.select-package.outputs.selected_package }}
+        working-directory: ./${{ matrix.package }}
         env:
           BALLERINA_CENTRAL_ACCESS_TOKEN: ${{ secrets.BALLERINA_CENTRAL_DEV_ACCESS_TOKEN }}
           JAVA_HOME: /usr/lib/jvm/default-jvm
@@ -99,7 +81,7 @@ jobs:
       - name: Push to Staging
         if: github.event.inputs.bal_central_environment == 'STAGING'
         run: bal push
-        working-directory: ./${{ needs.select-package.outputs.selected_package }}
+        working-directory: ./${{ matrix.package }}
         env:
           BALLERINA_CENTRAL_ACCESS_TOKEN: ${{ secrets.BALLERINA_CENTRAL_STAGING_ACCESS_TOKEN }}
           JAVA_HOME: /usr/lib/jvm/default-jvm
@@ -107,7 +89,7 @@ jobs:
       - name: Push to Production
         if: github.event.inputs.bal_central_environment == 'PROD'
         run: bal push
-        working-directory: ./${{ needs.select-package.outputs.selected_package }}
+        working-directory: ./${{ matrix.package }}
         env:
           BALLERINA_CENTRAL_ACCESS_TOKEN: ${{ secrets.BALLERINA_CENTRAL_PROD_ACCESS_TOKEN }}
           JAVA_HOME: /usr/lib/jvm/default-jvm

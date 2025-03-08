@@ -1,0 +1,113 @@
+name: Release to Ballerina Central
+
+on:
+  workflow_dispatch:
+    inputs:
+      ballerina_version:
+        description: 'Ballerina version to use (e.g., 2201.8.0, latest, nightly)'
+        required: false
+        default: 'latest'
+        type: string
+      bal_central_environment:
+        description: 'Environment to release to'
+        required: true
+        type: choice
+        options:
+          - DEV
+          - STAGING
+          - PROD
+
+jobs:
+  get-packages:
+    runs-on: ubuntu-latest
+    outputs:
+      package_list: ${{ steps.find-packages.outputs.packages }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Find Ballerina packages
+        id: find-packages
+        run: |
+          package_dirs=$(find . -maxdepth 2 -name "Ballerina.toml" -exec dirname {} \; | sort | sed 's/.\///')
+          package_list=$(echo "$package_dirs" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "packages=$package_list" >> $GITHUB_OUTPUT
+          echo "Found packages: $package_list"
+
+  select-package:
+    needs: get-packages
+    runs-on: ubuntu-latest
+    outputs:
+      selected_package: ${{ steps.select.outputs.selected }}
+    steps:
+      - name: Select package to publish
+        id: select
+        run: |
+          packages='${{ needs.get-packages.outputs.package_list }}'
+          echo "Available packages:"
+          echo "$packages" | jq -r '.[]'
+          echo ""
+          echo "::group::Package Selection"
+          echo "Please select a package to publish by entering a number:"
+          select_options=""
+          count=1
+          for pkg in $(echo "$packages" | jq -r '.[]'); do
+            select_options+="$count) $pkg\n"
+            count=$((count+1))
+          done
+          echo -e "$select_options"
+          echo "::endgroup::"
+          
+          # For GitHub Actions, we'll use the first package as default
+          # In a real interactive environment, you would prompt the user here
+          selected=$(echo "$packages" | jq -r '.[0]')
+          echo "selected=$selected" >> $GITHUB_OUTPUT
+          echo "Selected package: $selected"
+
+  release:
+    needs: select-package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Ballerina
+        uses: ballerina-platform/setup-ballerina@v1
+        with:
+          version: ${{ github.event.inputs.ballerina_version || 'latest' }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build Ballerina package
+        run: |
+          cd ${{ needs.select-package.outputs.selected_package }}
+          bal build
+          bal test
+
+      - name: Push to Dev
+        if: github.event.inputs.bal_central_environment == 'DEV'
+        run: bal push
+        working-directory: ./${{ needs.select-package.outputs.selected_package }}
+        env:
+          BALLERINA_CENTRAL_ACCESS_TOKEN: ${{ secrets.BALLERINA_CENTRAL_DEV_ACCESS_TOKEN }}
+          JAVA_HOME: /usr/lib/jvm/default-jvm
+
+      - name: Push to Staging
+        if: github.event.inputs.bal_central_environment == 'STAGING'
+        run: bal push
+        working-directory: ./${{ needs.select-package.outputs.selected_package }}
+        env:
+          BALLERINA_CENTRAL_ACCESS_TOKEN: ${{ secrets.BALLERINA_CENTRAL_STAGING_ACCESS_TOKEN }}
+          JAVA_HOME: /usr/lib/jvm/default-jvm
+
+      - name: Push to Production
+        if: github.event.inputs.bal_central_environment == 'PROD'
+        run: bal push
+        working-directory: ./${{ needs.select-package.outputs.selected_package }}
+        env:
+          BALLERINA_CENTRAL_ACCESS_TOKEN: ${{ secrets.BALLERINA_CENTRAL_PROD_ACCESS_TOKEN }}
+          JAVA_HOME: /usr/lib/jvm/default-jvm

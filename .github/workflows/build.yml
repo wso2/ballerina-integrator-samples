@@ -1,0 +1,33 @@
+name: Ballerina Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Ballerina
+        uses: ballerina-platform/setup-ballerina@v1
+        with:
+          version: latest
+
+      - name: Build and Test Ballerina packages
+        run: |
+          for dir in */; do
+            if [ -f "${dir}Ballerina.toml" ]; then
+              echo "Building package in $dir"
+              cd "$dir"
+              bal build
+              bal test
+              cd ..
+            fi
+          done

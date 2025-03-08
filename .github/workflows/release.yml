@@ -27,43 +27,52 @@ jobs:
   discover-packages:
     runs-on: ubuntu-latest
     outputs:
-      package_list: ${{ steps.find-packages.outputs.packages }}
+      filtered_packages: ${{ steps.filter-packages.outputs.filtered_list }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Find Ballerina packages
-        id: find-packages
+      - name: Find and filter Ballerina packages
+        id: filter-packages
         run: |
           package_dirs=$(find . -maxdepth 2 -name "Ballerina.toml" -exec dirname {} \; | sort | sed 's/.\///')
-          package_list=$(echo "$package_dirs" | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "packages=$package_list" >> $GITHUB_OUTPUT
-          echo "Found packages: $package_list"
+          all_packages=$(echo "$package_dirs" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          
+          input_packages="${{ github.event.inputs.packages }}"
+          
+          if [ "$input_packages" == "all" ]; then
+            echo "filtered_list=$all_packages" >> $GITHUB_OUTPUT
+            echo "Using all packages: $all_packages"
+          else
+            # Convert comma-separated list to JSON array
+            input_packages_array=$(echo "$input_packages" | jq -R 'split(",") | map(. | gsub("^\\s+|\\s+$"; ""))')
+          
+            # Filter packages that exist in repository and were requested
+            found_packages=$(echo "$package_dirs" | while read line; do
+              if [ -n "$line" ]; then
+                echo "$input_packages" | grep -q -E "(^|,)\\s*$line\\s*(,|$)" && echo "$line"
+              fi
+            done)
+          
+            filtered_json=$(echo "$found_packages" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "filtered_list=$filtered_json" >> $GITHUB_OUTPUT
+            echo "Filtered packages: $filtered_json"
+          fi
 
   release:
     needs: discover-packages
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: ${{ fromJSON(needs.discover-packages.outputs.package_list) }}
-        include: []
-    if: |
-      github.event.inputs.packages == 'all' || 
-      contains(split(github.event.inputs.packages, ','), matrix.package)
+        package: ${{ fromJSON(needs.discover-packages.outputs.filtered_packages) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Set up Ballerina
-        uses: ballerina-platform/setup-ballerina@v1
+        uses: ballerina-platform/setup-ballerina@v1.1.3
         with:
           version: ${{ github.event.inputs.ballerina_version || 'latest' }}
-
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
 
       - name: Build Ballerina package
         run: |

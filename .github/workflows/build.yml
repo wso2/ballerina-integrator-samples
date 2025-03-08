@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      ballerina_version:
+        description: 'Ballerina version to use (e.g., 2201.8.0, latest, nightly)'
+        required: false
+        default: 'latest'
+        type: string
 
 jobs:
   build:
@@ -18,7 +24,7 @@ jobs:
       - name: Set up Ballerina
         uses: ballerina-platform/setup-ballerina@v1
         with:
-          version: latest
+          version: ${{ github.event.inputs.ballerina_version || 'latest' }}
 
       - name: Build and Test Ballerina packages
         run: |

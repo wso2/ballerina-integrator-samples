@@ -2,9 +2,4 @@
 org = "wso2"
 name = "json_to_xml_converter"
 version = "0.1.0"
-distribution = "2201.11.0"
-
-[build-options]
-observabilityIncluded = true
-
-bi = true
+distribution = "2201.12.0"

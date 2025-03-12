@@ -7,14 +7,15 @@ Ballerina with an external email service.
 
 ## Prerequisites
 
-- Ensure that you have valid Gmail API credentials configured.
-- Set up necessary OAuth2 authentication for the Gmail connector.
-- Verify that the recipient’s email address is correct.
+- Obtain the following Gmail API credentials by following the steps in the [Gmail API documentation](https://developers.google.com/gmail/api/guides):
+    - Clint ID
+    - Client Secret
+    - Refresh Token
 
 ## Usage Instructions
 
-1. Configure the required Gmail API credentials and ensure the `ballerinax/googleapis.gmail` connector is properly set up.
-2. Set the `senderEmail`, `receiverEmail`, and `gmailUserId` values before running the program.
+1. Make sure to configure Gmail API credentials (`clientId`, `clientSecret`, and `refreshToken`) in the `Config.toml` file.
+2. Also set up `senderEmail`, `receiverEmail`, and `gmailUserId` values in the `Config.toml` file.
 3. Run the Ballerina application to send an email update.
 4. If you want to schedule the email to be sent daily at 8 AM, deploy this integration in **Devant** as a scheduled job.
    Once deployed, it will send the email every day at 8 AM.

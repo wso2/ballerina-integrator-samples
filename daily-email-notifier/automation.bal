@@ -8,8 +8,8 @@ public function main() returns error? {
         // construct and send the email message
         gmail:Message gmailMessage = check gmailClient->/users/[gmailUserId]/messages/send.post({
             'from: senderEmail,
-            'to: [receiverEmail],
-            'subject: "Morning Update",
+            to: [receiverEmail],
+            subject: "Morning Update",
             bodyInText: "Hello! This is your daily update from '" + gmailUserId + "'. Have a great day!"
         });
 

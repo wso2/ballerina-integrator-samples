@@ -22,8 +22,15 @@ exchange rates using Redis to improve performance and reduce external API calls.
     - `from` (default: `USD`): The source currency.
     - `to` (default: `LKR`): The target currency.
     - `amount` (default: `1`): The amount to be converted.
-3. If an exchange rate is available in the Redis cache, the conversion will be done using the cached rate. Otherwise,
-   the API fetches the latest rate and updates the cache.
+
+## How It Works
+
+- The service listens on port `9090` for incoming HTTP requests.
+- When a request is received, the service first checks the Redis cache for the exchange rate.
+- If the exchange rate is not found in the cache, the service calls the external exchange rate API to get the exchange
+  rate.
+- The service then calculates the converted amount and returns it to the client.
+- The service caches the exchange rate in Redis for future requests.
 
 ## Example Request
 

@@ -7,8 +7,8 @@ exchange rates using Redis to improve performance and reduce external API calls.
 
 ## Prerequisites
 
-- Ensure that Redis is running on `localhost:6379`. (if Redis is running on a different host or port, update the redis
-  configurations in the implementation accordingly)
+- Ensure that Redis is running on `localhost:6379`. (If Redis is running on a different host or port, update the Redis
+  configurations in the implementation accordingly.)
   Note: If the Redis server is not running, the service will still work, but without caching.
 
 - Log in to [ExchangeRate API](https://www.exchangerate-api.com/) and obtain an API key.

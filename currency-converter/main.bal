@@ -26,16 +26,14 @@ service / on httpDefaultListener {
                 // If the value found in the cache, calculate based on the cached rate
                 return {value: amount * check decimal:fromString(cachedRate)};
             } else {
-                json response = check httpClient->get("/convert?from=" + 'from + "&to=" + to + "&amount=" + amount.toString(), headers = {"apikey": apiKey});
-                if response.suceess == false {
+                json response = check httpClient->get("/pair/" + 'from + "/" + to + "/" + amount.toString(), headers = {Authorization: "Bearer " + apiKey});
+                if response.result !is "success" {
                     return error("Error converting currency: " + (check response.reason).toString());
                 }
 
-                decimal rate = check response.result;
-                decimal convertedAmount = amount * rate;
                 // Update the cache with the new rate
-                check updateCache(self.redisClient, key, rate);
-                return {value: convertedAmount};
+                check updateCache(self.redisClient, key, check response.conversion_rate);
+                return {value: check response.conversion_result};
             }
         } on fail error err {
             log:printError("Error converting currency: " + err.message());

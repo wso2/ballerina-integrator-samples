@@ -8,7 +8,7 @@ Ballerina with an external email service.
 ## Prerequisites
 
 - Obtain the following Gmail API credentials by following the steps in the [Gmail API documentation](https://developers.google.com/gmail/api/guides):
-    - Clint ID
+    - Client ID
     - Client Secret
     - Refresh Token
 

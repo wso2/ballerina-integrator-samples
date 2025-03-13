@@ -10,11 +10,10 @@ service / on httpDefaultListener {
     function init() {
         // Initialize the redis client
         do {
-            self.redisClient = check new (connection = "redis://localhost:6379");
+            self.redisClient = check new (connection = redisConnectionString);
         } on fail error err {
-            log:printWarn("Error initializing redis client: " + err.message());
+            log:printWarn(err.message());
             log:printWarn("Caching will be disabled");
-            self.redisClient = ();
         }
     }
 
